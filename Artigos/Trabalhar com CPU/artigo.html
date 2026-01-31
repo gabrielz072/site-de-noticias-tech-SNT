@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<link rel="stylesheet" href="artigo.css">
+<link rel="icon" type="image/png" href="../../favicon.png">
+
+<head>
+    <meta charset="UTF-8">
+    <title>DevBR</title>
+    <meta name="description" content="Acompanhe as últimas notícias de tecnologia, programação e inteligência artificial.">
+</head>
+
+<body>
+
+    <!-- Cabeçalho -->
+    <header>
+        <h1>DevBR</h1>
+        <p>Site de artigos sobre tecnologia</p>
+    </header>
+
+    <!-- Menu -->
+    <nav>
+        <a href="../../home.html">Home</a>
+        <a href="#">Artigos</a>
+        <a href="#">Sobre</a>
+        <a href="#">Contato</a>
+    </nav>
+
+    <!-- Conteúdo principal -->
+    <main>
+
+        <!-- Espaço dos artigos -->
+        <section class="articles">
+
+            <!-- Card vazio -->
+            <div class="article-card">
+
+                <article>
+
+                    <h1>Trabalhar com CPU</h1>
+
+                    <p>Tenho construído vários projetos, e um deles é esta Simulação de CPU. Estou no mundo web há 4 anos, mas ainda não entendia bem o que é uma CPU. Então, na última semana, comecei a construir um pequeno projeto de simulação de CPU que segue o comportamento de uma CPU real.</p>
+                    <p>Por que esse interesse repentino em CPUs?</p>
+                    <p>Curiosidade. Houve um gatilho depois que li um artigo sobre como a CPU funciona e percebi que, no fundo, o funcionamento é bem simples. Isso me fez pensar: “ei, eu consigo construir isso”.</p>
+                    <p>Componentes principais da CPU</p>
+                    <p>Em uma CPU, existem dois componentes muito importantes chamados Unidade de Controle (Control Unit) e ALU (Unidade Lógica e Aritmética).</p>
+                    <p>Em alto nível, elas seguem uma ideia simples, frequentemente descrita como “buscar e executar” (fetch and execute). De forma mais detalhada, o ciclo funciona assim:</p>
+                    <p>Unidade de Controle (Control Unit)</p>
+                    <p>A Unidade de Controle é responsável por buscar as instruções na memória e decodificá-las em algo que a ALU consiga entender. Decodificar significa traduzir a instrução em sinais de controle que a ALU possa executar.</p>
+                    <p>A ALU é responsável por executar a instrução, produzir um resultado e armazenar esse resultado em um registrador ou na memória.</p>
+                    <p>De forma simples, o ciclo é algo como:</p>
+                    <p>buscar → decodificar → executar → armazenar → próxima</p>
+                    <p>Esse é todo o ciclo, e ele se repete até que todas as instruções sejam concluídas.</p>
+                    <p>A partir disso, fica claro que o computador funciona de maneira simples e previsível. A CPU não se importa com qual programa foi fornecido; ela só se importa se a instrução é válida e se pode ser executada.</p>
+                    <p>Implementação da simulação</p>
+                    <p>Consegui construir essa simulação usando Java, e ela pode ser melhorada no futuro. Aqui está o código no GitHub.</p>
+                    <p>Eu uso o navegador web para interagir com a CPU. A CPU possui 4 registradores de índice e 100 bytes de memória. Mas, por enquanto, implementei apenas uma pequena parte de como a CPU funciona.</p>
+                    <p>Aqui está um gist com o código da CU e da ALU.</p>
+                    <p>Como você pode ver no código do GitHub, a CU (Control Unit) possui sua própria classe. Essa classe contém algumas partes importantes, incluindo a busca do programa, sua conversão em um stream e a decodificação para algo que a ALU da simulação consiga ler.</p>
+                    <pre>
+                        <code>
+    private int resolveInstruction(Operand op) {
+
+    // Convert to Number
+    if (op instanceof LabelRef label) {
+      Integer addr = labels.get(label.name());
+
+      if (addr == null) {
+        throw new IllegalStateException("Unknow Label :" + label.name());
+      }
+
+      return addr;
+    }
+
+    // Convert to Number
+    if (op instanceof HexCode hx) {
+      return Integer.decode(hx.value());
+    }
+
+    // Convert to Number
+    if (op instanceof Immediate imm) {
+      return imm.value();
+    }
+
+    // Convert to Number
+    if (op instanceof RegisterCode rc) {
+      return parseRegister(rc.value());
+    }
+
+    return 0;
+  }
+
+  private Instruction resolver(RawInstruction ins) {
+    var instruction = new Instruction();
+    instruction.opcode = ins.opcode;
+    switch (ins.opcode) {
+      case HALT:
+        break;
+      case JMP:
+        instruction.dest = resolveInstruction(ins.dest);
+        break;
+      case STOREM:
+      case LOADM:
+        instruction.dest = resolveInstruction(ins.dest);
+        instruction.src = resolveInstruction(ins.src);
+        break;
+      case LOAD:
+        instruction.dest = resolveInstruction(ins.dest);
+        instruction.src = resolveInstruction(ins.src);
+        break;
+      case CMP:
+      case ADD:
+        instruction.dest = resolveInstruction(ins.dest);
+        instruction.src = resolveInstruction(ins.src);
+        break;
+      case JZ:
+        instruction.dest = resolveInstruction(ins.dest);
+        break;
+      case null:
+      default:
+        break;
+    }
+
+    return instruction;
+  }
+                        </code>
+                    </pre>
+
+                    <p>Como é possível ver na função chamada <code>resolver</code>, ela converte todos os valores em números, porque a CPU não entende nada além de números.</p>
+
+                    <pre>
+                      <code>
+    void execute(Register reg, Memory mem, ArrayList<Instruction> program) {
+    if (programCounter < 0 || programCounter >= program.size()) {
+      halted = true;
+      fault = CpuFault.INVALID_PC;
+      return;
+    }
+
+    Instruction inst = program.get(programCounter);
+
+    switch (inst.opcode) {
+      case LOAD:
+      case STOREM:
+      case LOADM:
+      case ADD: // register to register
+        this.store(inst, reg, mem);
+        break;
+      case CMP:
+        int temp = reg.r[inst.dest] - reg.r[inst.src];
+        flag.zero = (temp == 0);
+        flag.negative = (temp < 0);
+        programCounter++;
+        break;
+      case JMP:
+        programCounter = inst.dest - 1;
+        break;
+      case JZ:
+        if (flag.zero) {
+          programCounter = inst.dest - 1;
+        } else {
+          programCounter++;
+        }
+        break;
+      case HALT:
+        halted = true;
+        break;
+      case null:
+      default:
+        fault = CpuFault.ILLEGAL_INSTRUCTION;
+        halted = true;
+    }
+  }
+
+  private void store(Instruction inst, Register reg, Memory mem) {
+    switch (inst.opcode) {
+      case LOADM:
+        if (inst.src > mem.ram.length) {
+          halted = true;
+          fault = CpuFault.INVALID_MEM;
+          break;
+        }
+        reg.r[inst.dest] = mem.ram[inst.src];
+        programCounter++;
+        break;
+      case STOREM:
+        if (inst.src > mem.ram.length) {
+          halted = true;
+          fault = CpuFault.INVALID_MEM;
+          break;
+        }
+        mem.ram[inst.src] = reg.r[inst.dest];
+        programCounter++;
+        break;
+      case ADD:
+        int res = reg.r[inst.dest] + reg.r[inst.src];
+        reg.r[inst.dest] = res;
+        flag.zero = (res == 0);
+        flag.negative = (res < 0);
+        programCounter++;
+        break;
+      case LOAD:
+        reg.r[inst.dest] = inst.src;
+        programCounter++;
+        break;
+      default:
+        break;
+    }
+  }
+                      </code>
+                    </pre>
+
+                    <p>O bloco de código acima é uma função importante da classe ALU, que contém a função execute. Ela recebe a instrução já decodificada da classe Control Unit e a executa.</p>
+                    <p>Também adicionei um tratamento de erros. O tratamento de erros em uma CPU é bastante parecido com o de muitos programas: se houver uma instrução ilegal ou incorreta, a execução é interrompida. Se você já usou ferramentas como <code>sudo</code> ou outros comandos do Linux, é a mesma ideia — se ocorrer um erro, o programa para.</p>
+                    <p>Se eu trocar o JZ exit por um JMP loop, isso pode causar um loop infinito.</p>
+                    <p>Labels e controle de fluxo</p>
+                    <p>Outra parte interessante são os labels, como <code>loop:</code> ou <code>exit:</code>. Esses labels servem apenas para o parser lembrar a qual linha eles se referem.</p>
+                    <p>Por exemplo:</p>
+
+                    <pre>
+                      <code>
+  LOAD A, 1
+  LOAD B, 1
+  LOAD C, 7
+
+  loop:
+  ADD A, B
+  CMP A, C
+  JZ exit
+  JMP loop
+
+  exit:
+  HALT
+                      </code>
+                    </pre>
+
+                    <P>As instruções acima representam um loop simples que para quando o valor atinge um limite.</P>
+                    <P>Isso é equivalente a:</P>
+
+                    <pre>
+                      <code>
+  int A = 1;
+  int B = 1;
+
+  while (A != 7) {
+      A += B;
+  }
+
+  return;
+                      </code>
+                    </pre>
+
+                    <P>Se eu trocar o <code>JZ exit</code> por <code>JMP loop</code>, isso pode causar um loop infinito.</P>
+                    <p>Existem muitos conceitos mais modernos no design de CPUs, mas, por enquanto, acredito que um modelo tradicional de CPU já é suficiente para entender os fundamentos.</p>
+
+
+                </article>
+
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Rodapé -->
+    <footer>
+        <p>© 2026 - DevBR</p>
+    </footer>
+
+</body>
+</html>
